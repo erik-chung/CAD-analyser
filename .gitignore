@@ -1,0 +1,31 @@
+# Build
+build/
+cmake-build-*/
+*.o
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Output
+output/
+*.json
+!package.json
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Test data (large binary files)
+*.dwg
+*.bak
+*.pdf
+*.zip
+*.jpg
+*.png
