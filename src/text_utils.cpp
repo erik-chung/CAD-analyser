@@ -60,22 +60,37 @@ std::string to_utf8(const char* str, unsigned int codepage) {
 #endif
 
 std::string sanitize_mtext(const std::string& raw) {
-    // Strip MTEXT formatting codes: {\fArial|...;text}, \P (newline), \A1; etc.
     std::string result = raw;
-    // Remove {\fFontName|b0|i0|c134|p49; ... } font wrappers - keep inner text
-    std::regex font_re(R"(\{\\f[^;]*;([^}]*)\})");
-    result = std::regex_replace(result, font_re, "$1");
-    // Remove \P (paragraph/newline markers) -> newline
-    std::regex newline_re(R"(\\P)");
-    result = std::regex_replace(result, newline_re, "\n");
-    // Remove \A alignment codes
-    std::regex align_re(R"(\\A\d+;)");
-    result = std::regex_replace(result, align_re, "");
-    // Remove remaining backslash codes like \W, \H, \T, \Q, \L, \O, \~
-    std::regex code_re(R"(\\[WHSTQLOo~][^;]*;?)");
-    result = std::regex_replace(result, code_re, "");
-    // Remove stray braces
-    std::regex brace_re(R"([\{\}])");
-    result = std::regex_replace(result, brace_re, "");
+    result = std::regex_replace(result, std::regex(R"(\{\\f[^;]*;([^}]*)\})"), "$1");
+    result = std::regex_replace(result, std::regex(R"(\\f[^;]*;)"), "");
+    result = std::regex_replace(result, std::regex(R"(\\P)"), "\n");
+    result = std::regex_replace(result, std::regex(R"(\\A\d+;)"), "");
+    result = std::regex_replace(result, std::regex(R"(\\C\d+;)"), "");
+    result = std::regex_replace(result, std::regex(R"(\\p[^;]*;)"), "");
+    result = std::regex_replace(result, std::regex(R"(\\[WHSTQLOo~][^;]*;?)"), "");
+    std::regex u_re(R"(\\U\+([0-9A-Fa-f]{4}))");
+    std::string tmp;
+    std::sregex_iterator it(result.begin(), result.end(), u_re), end;
+    size_t last = 0;
+    for (; it != end; ++it) {
+        tmp += result.substr(last, it->position() - last);
+        unsigned int cp = std::stoul((*it)[1].str(), nullptr, 16);
+        if (cp < 0x80) {
+            tmp += static_cast<char>(cp);
+        } else if (cp < 0x800) {
+            tmp += static_cast<char>(0xC0 | (cp >> 6));
+            tmp += static_cast<char>(0x80 | (cp & 0x3F));
+        } else {
+            tmp += static_cast<char>(0xE0 | (cp >> 12));
+            tmp += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+            tmp += static_cast<char>(0x80 | (cp & 0x3F));
+        }
+        last = it->position() + it->length();
+    }
+    if (!tmp.empty() || last > 0) {
+        tmp += result.substr(last);
+        result = tmp;
+    }
+    result = std::regex_replace(result, std::regex(R"([\{\}])"), "");
     return result;
 }

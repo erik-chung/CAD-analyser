@@ -7,6 +7,25 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
+#ifdef _WIN32
+#include <windows.h>
+
+static std::string utf8_to_acp(const std::string& utf8) {
+    if (utf8.empty()) return {};
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
+    if (wlen <= 0) return utf8;
+    std::wstring wide(wlen, 0);
+    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], wlen);
+
+    int nlen = WideCharToMultiByte(CP_ACP, 0, wide.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (nlen <= 0) return utf8;
+    std::string acp(nlen, 0);
+    WideCharToMultiByte(CP_ACP, 0, wide.c_str(), -1, &acp[0], nlen, nullptr, nullptr);
+    if (!acp.empty() && acp.back() == '\0') acp.pop_back();
+    return acp;
+}
+#endif
+
 static std::string filename_from_path(const std::string& path) {
     return fs::path(path).filename().string();
 }
@@ -28,7 +47,14 @@ bool DwgParser::open(const std::string& filepath) {
         loaded_ = false;
     }
     filepath_ = filepath;
-    int error = dwg_read_file(filepath.c_str(), &dwg_);
+
+    // LibreDWG uses fopen() which expects ACP encoding on Windows
+    std::string fopen_path = filepath;
+#ifdef _WIN32
+    fopen_path = utf8_to_acp(filepath);
+#endif
+
+    int error = dwg_read_file(fopen_path.c_str(), &dwg_);
     if (error >= DWG_ERR_CRITICAL) {
         std::cerr << "Error: failed to read DWG file: " << filepath
                   << " (error code: " << error << ")" << std::endl;

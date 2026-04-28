@@ -155,7 +155,7 @@ json extract_mtext(Dwg_Object* obj) {
     j["raw_content"] = raw;
     j["position"] = point3d(mtext->ins_pt.x, mtext->ins_pt.y, mtext->ins_pt.z);
     j["height"] = mtext->text_height;
-    j["rotation"] = mtext->rotation;
+    j["x_axis_dir"] = point3d(mtext->x_axis_dir.x, mtext->x_axis_dir.y, mtext->x_axis_dir.z);
     j["layer"] = get_layer_name(obj->tio.entity);
     return j;
 }
