@@ -2,10 +2,6 @@
 build/
 cmake-build-*/
 *.o
-*.exe
-*.dll
-*.so
-*.dylib
 
 # IDE
 .vscode/
